@@ -20,7 +20,7 @@ export class ChatService {
     private reactionRepository: Repository<Reaction>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-  ) {}
+  ) { }
 
   async initGeneralRoom() {
     const general = await this.roomRepository.findOne({
@@ -133,7 +133,18 @@ export class ChatService {
       user,
     });
 
-    return this.messageRepository.save(message);
+    const saved = await this.messageRepository.save(message);
+
+    // Retourner le message avec ses relations pour que le client reçoive
+    // l'objet complet (user, reactions, etc.). Si la requête avec
+    // relations ne retourne rien (hautement improbable), renvoyer l'objet
+    // sauvegardé pour éviter de casser l'appelant.
+    const withRelations = await this.messageRepository.findOne({
+      where: { id: saved.id },
+      relations: ['user', 'reactions', 'reactions.user'],
+    });
+
+    return withRelations ?? saved;
   }
 
   async addReaction(

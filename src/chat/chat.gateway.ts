@@ -23,7 +23,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private typingUsers: Map<number, Set<string>> = new Map();
 
-  constructor(private chatService: ChatService) {}
+  constructor(private chatService: ChatService) { }
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -90,11 +90,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('sendMessage')
   async handleMessage(@MessageBody() data: SendMessageDto) {
-    const messages = await this.chatService.getRoomMessages(
+    // Persist the message and return the saved message (with relations)
+    const sentMessage = await this.chatService.sendMessage(
       data.roomId,
       data.userId,
+      data.content,
     );
-    const sentMessage = messages[messages.length - 1];
 
     this.server.to(`room-${data.roomId}`).emit('newMessage', sentMessage);
 
