@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String            @id @default(uuid())
+  email        String            @unique
+  username     String            @unique
+  password     String
+  displayColor String            @default("#3b82f6")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  memberships  RoomMember[]
+  messages     Message[]
+  reactions    MessageReaction[]
+  sessions     Session[]
+
+  roomsCreated Room[] @relation("RoomCreatedBy")
+}
+
+model Room {
+  id          String       @id @default(uuid())
+  name        String
+  isGeneral   Boolean      @default(false)
+  createdById String
+  createdBy   User         @relation("RoomCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     RoomMember[]
+  messages    Message[]
+}
+
+model RoomMember {
+  id               String   @id @default(uuid())
+  roomId           String
+  userId           String
+  canAccessHistory Boolean  @default(true)
+  joinedAt         DateTime @default(now())
+  room             Room     @relation(fields: [roomId], references: [id])
+  user             User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
+model Message {
+  id        String            @id @default(uuid())
+  roomId    String
+  senderId  String
+  content   String
+  createdAt DateTime          @default(now())
+  room      Room              @relation(fields: [roomId], references: [id])
+  sender    User              @relation(fields: [senderId], references: [id])
+  reactions MessageReaction[]
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
