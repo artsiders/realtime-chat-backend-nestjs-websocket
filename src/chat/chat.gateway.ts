@@ -23,7 +23,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private typingUsers: Map<number, Set<string>> = new Map();
 
-  constructor(private chatService: ChatService) { }
+  constructor(private chatService: ChatService) {}
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -59,18 +59,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleCreateRoom(
     @MessageBody() data: CreateRoomDto & { creatorId: number },
   ) {
-    const room = await this.chatService.createRoom(
-      data.name,
-      data.creatorId,
-      data.memberIds,
-      data.giveHistoryAccess,
-    );
+    try {
+      const room = await this.chatService.createRoom(
+        data.name,
+        data.creatorId,
+        data.memberIds,
+        data.giveHistoryAccess,
+      );
 
-    for (const memberId of [data.creatorId, ...data.memberIds]) {
-      this.server.to(`user-${memberId}`).emit('newRoom', room);
+      // Émettre à tous les membres (créateur + invités)
+      const allMemberIds = [data.creatorId, ...data.memberIds];
+      for (const memberId of allMemberIds) {
+        this.server.to(`user-${memberId}`).emit('newRoom', room);
+      }
+
+      return room;
+    } catch (error) {
+      console.error('Erreur lors de la création du salon:', error);
+      return { error: 'Erreur lors de la création du salon' };
     }
-
-    return room;
   }
 
   @SubscribeMessage('joinRoom')
